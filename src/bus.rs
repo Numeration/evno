@@ -25,7 +25,7 @@ impl Inner {
 
     fn get_emitter_proxy<'guard, E: Event>(
         &self,
-        emitters_guard: &'guard papaya::LocalGuard<'_>,
+        emitters_guard: &'guard papaya::OwnedGuard<'_>,
     ) -> &'guard dyn EmitterProxy {
         self.emitters
             .get_or_insert_with(
@@ -51,7 +51,7 @@ impl Bus {
 
     pub fn bind<E: Event>(&self, listener: impl Listener<Event = E>) -> SubscribeHandle {
         let emit_guard = self.inner.emit_barrier.acquire_owned();
-        let emitters_guard = self.inner.emitters.guard();
+        let emitters_guard = self.inner.emitters.owned_guard();
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
 
         let cancel = tokio_util::sync::CancellationToken::new();
@@ -64,14 +64,14 @@ impl Bus {
     }
 
     pub async fn emit<E: Event>(&self, event: E) {
-        let emitters_guard = self.inner.emitters.guard();
+        let emitters_guard = self.inner.emitters.owned_guard();
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
 
         emitter_proxy.as_emitter().emit(event).await;
     }
 
     pub fn emitter<E: Event>(&self) -> Emitter<E> {
-        let emitters_guard = self.inner.emitters.guard();
+        let emitters_guard = self.inner.emitters.owned_guard();
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
 
         emitter_proxy.as_emitter().clone()
