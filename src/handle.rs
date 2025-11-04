@@ -30,9 +30,3 @@ impl Future for SubscribeHandle {
         Pin::new(&mut self.get_mut().join.as_mut().expect("join already taken")).poll(cx)
     }
 }
-
-impl Drop for SubscribeHandle {
-    fn drop(&mut self) {
-        self.cancel.cancel();
-    }
-}

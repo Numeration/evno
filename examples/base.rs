@@ -1,6 +1,5 @@
 use evno::{Bus, many, on, once};
 use std::time::Duration;
-use tokio::join;
 
 #[derive(Clone)]
 struct EventA;
@@ -23,7 +22,7 @@ async fn main() {
     let bus = Bus::new(2);
 
     // Register EventA listener
-    let handle1 = bus.bind::<EventA>(once(|_| async {
+    bus.bind::<EventA>(once(|_| async {
         println!("Handled  Event A");
     }));
 
@@ -33,7 +32,7 @@ async fn main() {
     }));
 
     // Register EventC listener
-    let handle3 = bus.bind(many(3, event_c_listener));
+    bus.bind(many(3, event_c_listener));
 
     // Emit events
     bus.emit(EventA).await;
@@ -44,7 +43,7 @@ async fn main() {
     // Cancel EventB listener and register EventD listener
     handle2.cancel();
     tokio::time::sleep(Duration::from_millis(1)).await;
-    let handle4 = bus.bind(on(|_: EventD| async {
+    bus.bind(on(|_: EventD| async {
         println!("Handled  Event D");
     }));
 
@@ -54,6 +53,4 @@ async fn main() {
     bus.clone().emit(EventD).await;
 
     drop(bus);
-
-    let _ = join!(handle1, handle3, handle4);
 }

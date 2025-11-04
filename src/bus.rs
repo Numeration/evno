@@ -7,6 +7,7 @@ use acty::ActorExt;
 use std::any::TypeId;
 use std::ops::Deref;
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 struct Inner {
     capacity: usize,
@@ -50,11 +51,13 @@ impl Bus {
     }
 
     pub fn bind<E: Event>(&self, listener: impl Listener<Event = E>) -> SubscribeHandle {
+        self.bind_cancel(CancellationToken::new(), listener)
+    }
+
+    pub fn bind_cancel<E: Event>(&self, cancel: CancellationToken, listener: impl Listener<Event = E>) -> SubscribeHandle {
         let emit_guard = self.inner.emit_barrier.acquire_owned();
         let emitters_guard = self.inner.emitters.owned_guard();
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
-
-        let cancel = tokio_util::sync::CancellationToken::new();
 
         let actor = ListenerActor(listener, cancel.clone());
         let launcher = Launcher(emitter_proxy.as_emitter::<E>().clone(), emit_guard);
