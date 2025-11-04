@@ -1,0 +1,25 @@
+[package]
+name = "evno"
+version = "0.1.0"
+edition = "2024"
+authors = ["Numeration<boxed87@outlook.com>"]
+description = "A high-performance event bus for asynchronous tasks and event-driven systems."
+license-file = "LICENSE"
+repository = "https://github.com/Numeration/evno"
+readme = "README.md"
+documentation = "https://docs.rs/evno"
+keywords = ["event-bus", "async", "lock-free", "performance", "actor"]
+categories = ["asynchronous", "concurrency", "data-structures"]
+
+[dependencies]
+acty = "0.6.0"
+async-stream = "0.3.6"
+futures = "0.3.31"
+gyre = "0.5.1"
+papaya = "0.2.3"
+tokio = { version = "1.48.0", features = ["sync", "rt", "rt-multi-thread", "macros"] }
+tokio-util = "0.7.17"
+trait-variant = "0.1.2"
+crossbeam-utils = "0.8.21"
+
+
