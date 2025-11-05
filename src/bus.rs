@@ -2,17 +2,19 @@ use crate::emit::{AsEmitter, EmitterProxy};
 use crate::event::Event;
 use crate::handle::SubscribeHandle;
 use crate::launcher::Launcher;
-use crate::{Emitter, Listener, ListenerActor, emit_barrier};
+use crate::{Emitter, Listener, ListenerActor, emit_barrier, task, WithTimes};
 use acty::ActorExt;
 use std::any::TypeId;
 use std::ops::Deref;
 use std::sync::Arc;
+use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
 struct Inner {
     capacity: usize,
     emitters: papaya::HashMap<TypeId, Box<dyn EmitterProxy>>,
     emit_barrier: Arc<emit_barrier::Lock>,
+    latch: task::Latch,
 }
 
 impl Inner {
@@ -21,6 +23,7 @@ impl Inner {
             capacity,
             emitters: Default::default(),
             emit_barrier: Default::default(),
+            latch: Default::default(),
         }
     }
 
@@ -38,15 +41,20 @@ impl Inner {
     }
 }
 
+#[derive(Default)]
+struct BusBarrier(Notify);
+
 #[derive(Clone)]
 pub struct Bus {
     inner: Arc<Inner>,
+    barrier: Arc<BusBarrier>
 }
 
 impl Bus {
     pub fn new(capacity: usize) -> Self {
         Self {
             inner: Arc::new(Inner::new(capacity)),
+            barrier: Default::default(),
         }
     }
 
@@ -55,15 +63,31 @@ impl Bus {
     }
 
     pub fn bind_cancel<E: Event>(&self, cancel: CancellationToken, listener: impl Listener<Event = E>) -> SubscribeHandle {
+        let task_guard = self.inner.latch.acquire();
         let emit_guard = self.inner.emit_barrier.acquire_owned();
         let emitters_guard = self.inner.emitters.owned_guard();
-        let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
+        let emitter = self.inner
+            .get_emitter_proxy::<E>(&emitters_guard)
+            .as_emitter::<E>()
+            .clone();
 
-        let actor = ListenerActor(listener, cancel.clone());
-        let launcher = Launcher(emitter_proxy.as_emitter::<E>().clone(), emit_guard);
+        let actor = ListenerActor(listener, cancel.clone(), task_guard);
+        let launcher = Launcher(emitter, emit_guard);
         let join = actor.with(launcher);
 
         SubscribeHandle::new(cancel, join)
+    }
+
+    pub fn on<E: Event>(&self, listener: impl Listener<Event = E>) -> SubscribeHandle {
+        self.bind(listener)
+    }
+
+    pub fn once<E: Event>(&self, listener: impl Listener<Event = E>) -> SubscribeHandle {
+        self.bind(WithTimes::new(1, listener))
+    }
+
+    pub fn many<E: Event>(&self, times: usize, listener: impl Listener<Event = E>) -> SubscribeHandle {
+        self.bind(WithTimes::new(times, listener))
     }
 
     pub async fn emit<E: Event>(&self, event: E) {
@@ -78,5 +102,22 @@ impl Bus {
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
 
         emitter_proxy.as_emitter().clone()
+    }
+
+    pub async fn drain(self) {
+        let latch = self.inner.latch.clone();
+        let barrier = self.barrier.clone();
+        let notified = barrier.0.notified();
+        drop(self);
+        latch.wait().await;
+        notified.await;
+    }
+}
+
+impl Drop for Bus {
+    fn drop(&mut self) {
+        if Arc::get_mut(&mut self.inner).is_some() {
+            self.barrier.0.notify_waiters();
+        }
     }
 }
