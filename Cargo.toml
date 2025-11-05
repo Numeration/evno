@@ -1,6 +1,6 @@
 [package]
 name = "evno"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 authors = ["Numeration<boxed87@outlook.com>"]
 description = "A high-performance event bus for asynchronous tasks and event-driven systems."
@@ -15,7 +15,7 @@ categories = ["asynchronous", "concurrency", "data-structures"]
 acty = "0.6.0"
 async-stream = "0.3.6"
 futures = "0.3.31"
-gyre = "0.5.1"
+gyre = "0.6.0"
 papaya = "0.2.3"
 tokio = { version = "1.48.0", features = ["sync", "rt", "rt-multi-thread", "macros"] }
 tokio-util = "0.7.17"

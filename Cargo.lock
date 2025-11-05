@@ -68,7 +68,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "evno"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "acty",
  "async-stream",
@@ -172,9 +172,9 @@ dependencies = [
 
 [[package]]
 name = "gyre"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7682800cb7306cbd2d51205f8c082cda950459d17bc9614c3fb83ccf036afb9b"
+checksum = "e0c6c7e56d9e2f5899a45cd28b24d841c8a09a501ac8d443b756fa8bb56bde62"
 dependencies = [
  "crossbeam-utils",
  "futures",
