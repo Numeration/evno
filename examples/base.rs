@@ -1,4 +1,4 @@
-use evno::{Bus, many, on, once};
+use evno::{Bus, many, on, once, Rent};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -13,7 +13,7 @@ struct EventC;
 #[derive(Clone)]
 struct EventD;
 
-async fn event_c_listener(_: EventC) {
+async fn event_c_listener(_: Rent<EventC>) {
     println!("Handled  Event C");
 }
 
@@ -27,7 +27,7 @@ async fn main() {
     }));
 
     // Register EventB listener
-    let handle2 = bus.bind(on(|_: EventB| async {
+    let handle2 = bus.bind(on(|_: Rent<EventB>| async {
         println!("Handled  Event B");
     }));
 
@@ -43,7 +43,7 @@ async fn main() {
     // Cancel EventB listener and register EventD listener
     handle2.cancel();
     tokio::time::sleep(Duration::from_millis(1)).await;
-    bus.bind(on(|_: EventD| async {
+    bus.bind(on(|_: Rent<EventD>| async {
         println!("Handled  Event D");
     }));
 
@@ -51,6 +51,4 @@ async fn main() {
     bus.emit(EventA).await;
     bus.emit(EventB).await;
     bus.clone().emit(EventD).await;
-
-    drop(bus);
 }

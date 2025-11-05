@@ -5,11 +5,13 @@ use std::marker::PhantomData;
 use std::pin::pin;
 use tokio_util::sync::CancellationToken;
 
+pub type Rent<E> = gyre::OwnedEventGuard<E>;
+
 #[trait_variant::make(Send)]
 pub trait Listener: Sized + 'static {
     type Event: Event;
 
-    async fn handle(&mut self, cancel: &CancellationToken, event: Self::Event) -> ();
+    async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) -> ();
 }
 
 pub struct ListenerActor<L>(pub L, pub CancellationToken);
@@ -25,7 +27,6 @@ impl<L: Listener> Actor for ListenerActor<L> {
             tokio::select! {
                 event = inbox.next() => match event {
                     Some(event) => {
-                        let (_guard, event) = event.take();
                         listener.handle(&cancel, event).await;
                     }
                     None => break,
@@ -41,12 +42,12 @@ pub struct On<E, F>(F, PhantomData<E>);
 impl<E, F, Fut> Listener for On<E, F>
 where
     E: Event,
-    F: Send + FnMut(E) -> Fut + 'static,
+    F: Send + FnMut(Rent<E>) -> Fut + 'static,
     Fut: Send + Future<Output = ()>,
 {
     type Event = E;
 
-    async fn handle(&mut self, _: &CancellationToken, event: Self::Event) {
+    async fn handle(&mut self, _: &CancellationToken, event: Rent<Self::Event>) {
         (self.0)(event).await;
     }
 }
@@ -63,12 +64,12 @@ pub struct Once<E, F>(F, PhantomData<E>);
 impl<E, F, Fut> Listener for Once<E, F>
 where
     E: Event,
-    F: Send + FnMut(E) -> Fut + 'static,
+    F: Send + FnMut(Rent<E>) -> Fut + 'static,
     Fut: Send + Future<Output = ()>,
 {
     type Event = E;
 
-    async fn handle(&mut self, cancel: &CancellationToken, event: Self::Event) {
+    async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) {
         (self.0)(event).await;
         cancel.cancel();
     }
@@ -103,12 +104,12 @@ pub struct Many<E, F>(F, Counter, PhantomData<E>);
 impl<E, F, Fut> Listener for Many<E, F>
 where
     E: Event,
-    F: Send + FnMut(E) -> Fut + 'static,
+    F: Send + FnMut(Rent<E>) -> Fut + 'static,
     Fut: Send + Future<Output = ()>,
 {
     type Event = E;
 
-    async fn handle(&mut self, cancel: &CancellationToken, event: Self::Event) {
+    async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) {
         let cancel_flag = self.1.try_increment();
 
         (self.0)(event).await;

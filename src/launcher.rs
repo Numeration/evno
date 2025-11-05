@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::event::Event;
 use crate::{Emitter, emit_barrier};
 use acty::{Actor, Launch};
@@ -13,7 +14,7 @@ impl<E: Event> Launch for Launcher<E> {
 
     fn launch<A: Actor<Message = Self::Message>>(self, actor: A) -> Self::Result<A> {
         tokio::spawn(async move {
-            let mut consumer = self.0.subscribe().await;
+            let consumer = Arc::new(self.0.subscribe().await);
             drop(self);
             let stream = stream! {
                 while let Some(event) = consumer.next_owned().await {
