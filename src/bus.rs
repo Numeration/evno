@@ -1,4 +1,4 @@
-use crate::emit::{AsEmitter, EmitterProxy};
+use crate::emit::{AsEmitter, Emit, EmitterProxy, ToEmitter};
 use crate::event::Event;
 use crate::handle::SubscribeHandle;
 use crate::launcher::Launcher;
@@ -90,20 +90,6 @@ impl Bus {
         self.bind(WithTimes::new(times, listener))
     }
 
-    pub async fn emit<E: Event>(&self, event: E) {
-        let emitters_guard = self.inner.emitters.owned_guard();
-        let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
-
-        emitter_proxy.as_emitter().emit(event).await;
-    }
-
-    pub fn emitter<E: Event>(&self) -> Emitter<E> {
-        let emitters_guard = self.inner.emitters.owned_guard();
-        let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
-
-        emitter_proxy.as_emitter().clone()
-    }
-
     pub async fn drain(self) {
         let latch = self.inner.latch.clone();
         let barrier = self.barrier.clone();
@@ -111,6 +97,24 @@ impl Bus {
         drop(self);
         latch.wait().await;
         notified.await;
+    }
+}
+
+impl ToEmitter for Bus {
+    fn to_emitter<E: Event>(&self) -> Emitter<E> {
+        let emitters_guard = self.inner.emitters.owned_guard();
+        let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
+
+        emitter_proxy.as_emitter().clone()
+    }
+}
+
+impl Emit for Bus {
+    async fn emit<E: Event>(&self, event: E) {
+        let emitters_guard = self.inner.emitters.owned_guard();
+        let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
+
+        emitter_proxy.as_emitter().emit(event).await;
     }
 }
 

@@ -10,4 +10,4 @@ mod launcher;
 mod listener;
 mod task;
 
-pub use {bus::Bus, emitter::Emitter, listener::*};
+pub use {bus::Bus, emitter::Emitter, listener::*, emit::* };
