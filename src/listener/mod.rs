@@ -17,7 +17,11 @@ pub type Rent<E> = gyre::OwnedEventGuard<E>;
 pub trait Listener: Sized + 'static {
     type Event: Event;
 
+    async fn begin(&mut self, cancel: &CancellationToken);
+    
     async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) -> ();
+    
+    async fn after(&mut self, cancel: &CancellationToken);
 }
 
 pub struct ListenerActor<L>(pub L, pub CancellationToken, pub task::Guard);
@@ -29,6 +33,7 @@ impl<L: Listener> Actor for ListenerActor<L> {
         let ListenerActor(mut listener, cancel, _guard) = self;
         let mut inbox = pin!(inbox);
 
+        listener.begin(&cancel).await;
         loop {
             tokio::select! {
                 event = inbox.next() => match event {
@@ -40,5 +45,6 @@ impl<L: Listener> Actor for ListenerActor<L> {
                 _ = cancel.cancelled() => break,
             }
         }
+        listener.after(&cancel).await;
     }
 }

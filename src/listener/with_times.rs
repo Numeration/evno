@@ -11,6 +11,8 @@ pub struct WithTimes<E, L> {
 }
 
 impl<E, L> WithTimes<E, L> {
+
+    #[inline]
     pub fn new(times: usize, listener: L) -> Self {
         assert!(times > 0, "limit must be greater than zero, got {times}");
         Self {
@@ -29,11 +31,18 @@ where
 {
     type Event = E;
 
+    #[inline]
+    async fn begin(&mut self, _: &CancellationToken) {}
+
+    #[inline]
     async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) {
         self.count += 1;
-        self.listener.handle(&cancel, event).await;
+        self.listener.handle(cancel, event).await;
         if self.count >= self.times {
             cancel.cancel();
         }
     }
+
+    #[inline]
+    async fn after(&mut self, _: &CancellationToken) {}
 }
