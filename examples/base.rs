@@ -1,4 +1,4 @@
-use evno::{Bus, Rent, from_fn, Emit};
+use evno::{Bus, Emit, Rent, from_fn};
 use std::time::Duration;
 
 #[derive(Clone)]

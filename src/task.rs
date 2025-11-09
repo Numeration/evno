@@ -1,6 +1,6 @@
+use crossbeam_utils::CachePadded;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
-use crossbeam_utils::CachePadded;
 use tokio::sync::Notify;
 
 #[derive(Debug, Default, Clone)]

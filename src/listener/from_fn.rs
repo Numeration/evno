@@ -1,12 +1,11 @@
-use std::marker::PhantomData;
-use tokio_util::sync::CancellationToken;
 use crate::event::Event;
 use crate::{Listener, Rent};
+use std::marker::PhantomData;
+use tokio_util::sync::CancellationToken;
 
 pub struct FromFn<E, F>(F, PhantomData<E>);
 
 impl<E, F> FromFn<E, F> {
-
     #[inline]
     pub fn new(f: F) -> Self {
         Self(f, PhantomData)
@@ -30,11 +29,11 @@ where
     }
 
     #[inline]
-    async fn after(&mut self, _: &CancellationToken)  {}
+    async fn after(&mut self, _: &CancellationToken) {}
 }
 
 #[inline]
-pub fn from_fn<E, F>(f: F) -> FromFn<E, F> 
+pub fn from_fn<E, F>(f: F) -> FromFn<E, F>
 where
     FromFn<E, F>: Listener,
 {

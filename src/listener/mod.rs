@@ -2,11 +2,11 @@ mod from_fn;
 mod with_times;
 
 use crate::event::Event;
+use crate::task;
 use acty::{Actor, Inbox};
 use futures::StreamExt;
 use std::pin::pin;
 use tokio_util::sync::CancellationToken;
-use crate::task;
 
 pub use from_fn::*;
 pub use with_times::*;
@@ -18,9 +18,9 @@ pub trait Listener: Sized + 'static {
     type Event: Event;
 
     async fn begin(&mut self, cancel: &CancellationToken);
-    
+
     async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) -> ();
-    
+
     async fn after(&mut self, cancel: &CancellationToken);
 }
 

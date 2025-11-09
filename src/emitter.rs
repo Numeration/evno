@@ -1,49 +1,39 @@
-use crate::emit::EmitterProxy;
-use crate::emit_barrier;
+use crate::TypedEmit;
 use crate::event::Event;
+use crate::publisher::Publisher;
 use std::any::Any;
-use std::sync::Arc;
 
-#[derive(Debug)]
-pub struct Emitter<T> {
-    publisher: gyre::Publisher<T>,
-    emit_barrier: Arc<emit_barrier::Lock>,
+pub trait EmitterProxy: Send + Sync + 'static {
+    fn as_any(&self) -> &dyn Any;
 }
 
-impl<T: Event> Emitter<T> {
-    pub(crate) fn new(capacity: usize, lock: Arc<emit_barrier::Lock>) -> Self {
-        let (publisher, _) = gyre::channel(capacity);
-        Self {
-            publisher,
-            emit_barrier: lock,
-        }
-    }
+pub trait AsEmitter {
+    type Emitter<E: Event>: TypedEmit<Event = E>;
 
-    pub async fn subscribe(&self) -> gyre::Consumer<T> {
-        self.publisher.subscribe().await
-    }
+    fn as_emitter<E: Event>(&self) -> &Self::Emitter<E>;
+}
 
-    pub fn subscribe_owned(&self) -> gyre::OwnedSubscribe<T> {
-        self.publisher.subscribe_owned()
-    }
+impl AsEmitter for &dyn EmitterProxy {
+    type Emitter<E: Event> = Publisher<E>;
 
-    pub async fn emit(&self, event: T) {
-        self.emit_barrier.until_released().await;
-        self.publisher.publish(event).await;
+    fn as_emitter<E: Event>(&self) -> &Self::Emitter<E> {
+        self.as_any().downcast_ref::<Publisher<E>>().unwrap()
     }
 }
 
-impl<T> Clone for Emitter<T> {
-    fn clone(&self) -> Self {
-        Self {
-            publisher: self.publisher.clone(),
-            emit_barrier: self.emit_barrier.clone(),
-        }
-    }
+pub trait ToEmitter {
+    type Emitter<E: Event>: TypedEmit<Event = E>;
+
+    fn to_emitter<E: Event>(&self) -> Self::Emitter<E>;
 }
 
-impl<E: Event> EmitterProxy for Emitter<E> {
-    fn as_any(&self) -> &dyn Any {
-        self
+impl ToEmitter for &dyn EmitterProxy {
+    type Emitter<E: Event> = Publisher<E>;
+
+    fn to_emitter<E: Event>(&self) -> Self::Emitter<E> {
+        self.as_any()
+            .downcast_ref::<Publisher<E>>()
+            .unwrap()
+            .clone()
     }
 }

@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
-use tokio_util::sync::CancellationToken;
 use crate::event::Event;
 use crate::{Listener, Rent};
+use std::marker::PhantomData;
+use tokio_util::sync::CancellationToken;
 
 pub struct WithTimes<E, L> {
     listener: L,
@@ -11,7 +11,6 @@ pub struct WithTimes<E, L> {
 }
 
 impl<E, L> WithTimes<E, L> {
-
     #[inline]
     pub fn new(times: usize, listener: L) -> Self {
         assert!(times > 0, "limit must be greater than zero, got {times}");

@@ -1,8 +1,11 @@
-use crate::emit::{AsEmitter, Emit, EmitterProxy, ToEmitter};
 use crate::event::Event;
 use crate::handle::SubscribeHandle;
 use crate::launcher::Launcher;
-use crate::{Emitter, Listener, ListenerActor, emit_barrier, task, WithTimes};
+use crate::publisher::Publisher;
+use crate::{
+    AsEmitter, Emit, EmitterProxy, Listener, ListenerActor, ToEmitter, TypedEmit, WithTimes,
+    emit_barrier, task,
+};
 use acty::ActorExt;
 use std::any::TypeId;
 use std::ops::Deref;
@@ -34,7 +37,12 @@ impl Inner {
         self.emitters
             .get_or_insert_with(
                 TypeId::of::<E>(),
-                || Box::new(Emitter::<E>::new(self.capacity, self.emit_barrier.clone())),
+                || {
+                    Box::new(Publisher::<E>::new(
+                        self.capacity,
+                        self.emit_barrier.clone(),
+                    ))
+                },
                 emitters_guard,
             )
             .deref()
@@ -47,7 +55,7 @@ struct BusBarrier(Notify);
 #[derive(Clone)]
 pub struct Bus {
     inner: Arc<Inner>,
-    barrier: Arc<BusBarrier>
+    barrier: Arc<BusBarrier>,
 }
 
 impl Bus {
@@ -62,11 +70,16 @@ impl Bus {
         self.bind_cancel(CancellationToken::new(), listener)
     }
 
-    pub fn bind_cancel<E: Event>(&self, cancel: CancellationToken, listener: impl Listener<Event = E>) -> SubscribeHandle {
+    pub fn bind_cancel<E: Event>(
+        &self,
+        cancel: CancellationToken,
+        listener: impl Listener<Event = E>,
+    ) -> SubscribeHandle {
         let task_guard = self.inner.latch.acquire();
         let emit_guard = self.inner.emit_barrier.acquire_owned();
         let emitters_guard = self.inner.emitters.owned_guard();
-        let emitter = self.inner
+        let emitter = self
+            .inner
             .get_emitter_proxy::<E>(&emitters_guard)
             .as_emitter::<E>()
             .clone();
@@ -86,7 +99,11 @@ impl Bus {
         self.bind(WithTimes::new(1, listener))
     }
 
-    pub fn many<E: Event>(&self, times: usize, listener: impl Listener<Event = E>) -> SubscribeHandle {
+    pub fn many<E: Event>(
+        &self,
+        times: usize,
+        listener: impl Listener<Event = E>,
+    ) -> SubscribeHandle {
         self.bind(WithTimes::new(times, listener))
     }
 
@@ -101,7 +118,9 @@ impl Bus {
 }
 
 impl ToEmitter for Bus {
-    fn to_emitter<E: Event>(&self) -> Emitter<E> {
+    type Emitter<E: Event> = Publisher<E>;
+
+    fn to_emitter<E: Event>(&self) -> Publisher<E> {
         let emitters_guard = self.inner.emitters.owned_guard();
         let emitter_proxy = self.inner.get_emitter_proxy::<E>(&emitters_guard);
 

@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use crate::emit_barrier;
 use crate::event::Event;
-use crate::{Emitter, emit_barrier};
+use crate::publisher::Publisher;
 use acty::{Actor, Launch};
 use async_stream::stream;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 #[allow(dead_code)]
-pub struct Launcher<E>(pub(crate) Emitter<E>, pub(crate) emit_barrier::OwnedGuard);
+pub struct Launcher<E>(pub(crate) Publisher<E>, pub(crate) emit_barrier::OwnedGuard);
 
 impl<E: Event> Launch for Launcher<E> {
     type Message = gyre::OwnedEventGuard<E>;
