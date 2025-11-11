@@ -1,11 +1,9 @@
-mod tuple;
 mod with_processor;
 
 use crate::event::Event;
 use crate::processor::Processor;
 use crate::{Emit, ToEmitter};
 
-pub use tuple::*;
 pub use with_processor::*;
 
 pub trait Conveyor: Send + Sync {
