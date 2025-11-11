@@ -1,6 +1,6 @@
 use crate::TypedEmit;
 use crate::event::Event;
-use crate::processor::Processor;
+use crate::conveyor::processor::Processor;
 use std::marker::PhantomData;
 
 pub struct WithProcessor<E, T, U> {

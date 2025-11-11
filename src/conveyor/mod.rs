@@ -1,10 +1,11 @@
 mod with_processor;
+mod processor;
 
 use crate::event::Event;
-use crate::processor::Processor;
 use crate::{Emit, ToEmitter};
 
 pub use with_processor::*;
+pub use processor::*;
 
 pub trait Conveyor: Send + Sync {
     type Emit: Emit;

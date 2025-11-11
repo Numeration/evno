@@ -9,7 +9,6 @@ mod event;
 mod handle;
 mod launcher;
 mod listener;
-mod processor;
 mod publisher;
 mod task;
 
