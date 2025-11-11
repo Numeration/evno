@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::{Listener, Rent};
+use crate::{Guard, Listener};
 use std::marker::PhantomData;
 use tokio_util::sync::CancellationToken;
 
@@ -15,7 +15,7 @@ impl<E, F> FromFn<E, F> {
 impl<E, F, Fut> Listener for FromFn<E, F>
 where
     E: Event,
-    F: Send + FnMut(Rent<E>) -> Fut + 'static,
+    F: Send + FnMut(Guard<E>) -> Fut + 'static,
     Fut: Send + Future<Output = ()>,
 {
     type Event = E;
@@ -24,7 +24,7 @@ where
     async fn begin(&mut self, _: &CancellationToken) {}
 
     #[inline]
-    async fn handle(&mut self, _: &CancellationToken, event: Rent<Self::Event>) {
+    async fn handle(&mut self, _: &CancellationToken, event: Guard<Self::Event>) {
         (self.0)(event).await;
     }
 

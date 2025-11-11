@@ -20,10 +20,6 @@ impl<T: Event> Publisher<T> {
     pub async fn subscribe(&self) -> gyre::Consumer<T> {
         self.publisher.subscribe().await
     }
-
-    pub fn subscribe_owned(&self) -> gyre::OwnedSubscribe<T> {
-        self.publisher.subscribe_owned()
-    }
 }
 
 impl<T: Event> TypedEmit for Publisher<T> {

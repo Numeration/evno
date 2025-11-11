@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::{Listener, Rent};
+use crate::{Guard, Listener};
 use std::marker::PhantomData;
 use tokio_util::sync::CancellationToken;
 
@@ -34,7 +34,7 @@ where
     async fn begin(&mut self, _: &CancellationToken) {}
 
     #[inline]
-    async fn handle(&mut self, cancel: &CancellationToken, event: Rent<Self::Event>) {
+    async fn handle(&mut self, cancel: &CancellationToken, event: Guard<Self::Event>) {
         self.count += 1;
         self.listener.handle(cancel, event).await;
         if self.count >= self.times {
