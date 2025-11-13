@@ -23,15 +23,17 @@ impl<E, L> WithTimes<E, L> {
     }
 }
 
-impl<E, F> Listener for WithTimes<E, F>
+impl<E, L> Listener for WithTimes<E, L>
 where
     E: Event,
-    F: Listener<Event = E>,
+    L: Listener<Event = E>,
 {
     type Event = E;
 
     #[inline]
-    async fn begin(&mut self, _: &CancellationToken) {}
+    async fn begin(&mut self, cannel: &CancellationToken) {
+        self.listener.begin(cannel).await;
+    }
 
     #[inline]
     async fn handle(&mut self, cancel: &CancellationToken, event: Guard<Self::Event>) {
@@ -43,5 +45,7 @@ where
     }
 
     #[inline]
-    async fn after(&mut self, _: &CancellationToken) {}
+    async fn after(&mut self, cannel: &CancellationToken) {
+        self.listener.after(cannel).await;
+    }
 }
