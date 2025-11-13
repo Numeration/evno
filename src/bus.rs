@@ -4,7 +4,7 @@ use crate::launcher::Launcher;
 use crate::publisher::Publisher;
 use crate::{
     AsEmitter, Emit, EmitterProxy, Listener, ListenerActor, ToEmitter, TypedEmit, WithTimes,
-    emit_barrier, task,
+    bind_lock, wait_group,
 };
 use acty::ActorExt;
 use std::any::TypeId;
@@ -16,8 +16,8 @@ use tokio_util::sync::CancellationToken;
 struct Inner {
     capacity: usize,
     emitters: papaya::HashMap<TypeId, Box<dyn EmitterProxy>>,
-    emit_barrier: Arc<emit_barrier::Lock>,
-    latch: task::Latch,
+    emit_barrier: Arc<bind_lock::BindLock>,
+    latch: wait_group::WaitGroup,
 }
 
 impl Inner {
@@ -50,19 +50,19 @@ impl Inner {
 }
 
 #[derive(Default)]
-struct BusBarrier(Notify);
+struct ShutdownSignal(Notify);
 
 #[derive(Clone)]
 pub struct Bus {
     inner: Arc<Inner>,
-    barrier: Arc<BusBarrier>,
+    drop_notifier: Arc<ShutdownSignal>,
 }
 
 impl Bus {
     pub fn new(capacity: usize) -> Self {
         Self {
             inner: Arc::new(Inner::new(capacity)),
-            barrier: Default::default(),
+            drop_notifier: Default::default(),
         }
     }
 
@@ -75,8 +75,8 @@ impl Bus {
         cancel: CancellationToken,
         listener: impl Listener<Event = E>,
     ) -> SubscribeHandle {
-        let task_guard = self.inner.latch.acquire();
-        let emit_guard = self.inner.emit_barrier.acquire_owned();
+        let task_guard = self.inner.latch.add();
+        let emit_guard = self.inner.emit_barrier.lock();
         let emitters_guard = self.inner.emitters.owned_guard();
         let emitter = self
             .inner
@@ -109,7 +109,7 @@ impl Bus {
 
     pub async fn drain(self) {
         let latch = self.inner.latch.clone();
-        let barrier = self.barrier.clone();
+        let barrier = self.drop_notifier.clone();
         let notified = barrier.0.notified();
         drop(self);
         latch.wait().await;
@@ -140,7 +140,7 @@ impl Emit for Bus {
 impl Drop for Bus {
     fn drop(&mut self) {
         if Arc::get_mut(&mut self.inner).is_some() {
-            self.barrier.0.notify_waiters();
+            self.drop_notifier.0.notify_waiters();
         }
     }
 }

@@ -3,21 +3,16 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
 use tokio::sync::Notify;
 
-#[derive(Debug, Default, Clone)]
-pub struct Latch {
-    inner: Arc<LatchInner>,
-}
-
 #[derive(Debug, Default)]
-struct LatchInner {
+struct Inner {
     count: CachePadded<AtomicI64>,
     notify: Notify,
 }
 
-impl Latch {
-    pub fn acquire(&self) -> Guard {
+impl WaitGroup {
+    pub fn add(&self) -> GroupGuard {
         self.inner.count.fetch_add(1, Ordering::Relaxed);
-        Guard(self.inner.clone())
+        GroupGuard(self.inner.clone())
     }
 
     pub async fn wait(&self) {
@@ -37,9 +32,14 @@ impl Latch {
     }
 }
 
-pub struct Guard(Arc<LatchInner>);
+#[derive(Debug, Default, Clone)]
+pub struct WaitGroup {
+    inner: Arc<Inner>,
+}
 
-impl Drop for Guard {
+pub struct GroupGuard(Arc<Inner>);
+
+impl Drop for GroupGuard {
     fn drop(&mut self) {
         if self.0.count.fetch_sub(1, Ordering::Release) == 1 {
             self.0.notify.notify_waiters();

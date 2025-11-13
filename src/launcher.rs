@@ -1,4 +1,4 @@
-use crate::emit_barrier;
+use crate::bind_lock;
 use crate::event::Event;
 use crate::publisher::Publisher;
 use acty::{Actor, Launch};
@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 #[allow(dead_code)]
-pub struct Launcher<E>(pub(crate) Publisher<E>, pub(crate) emit_barrier::OwnedGuard);
+pub struct Launcher<E>(pub(crate) Publisher<E>, pub(crate) bind_lock::BindGuard);
 
 impl<E: Event> Launch for Launcher<E> {
     type Message = gyre::OwnedEventGuard<E>;

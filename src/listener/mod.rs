@@ -2,7 +2,7 @@ mod from_fn;
 mod with_times;
 
 use crate::event::Event;
-use crate::task;
+use crate::wait_group;
 use acty::Actor;
 use futures::{Stream, StreamExt};
 use std::pin::pin;
@@ -24,7 +24,7 @@ pub trait Listener: Sized + 'static {
     async fn after(&mut self, cancel: &CancellationToken);
 }
 
-pub struct ListenerActor<L>(pub L, pub CancellationToken, pub task::Guard);
+pub struct ListenerActor<L>(pub L, pub CancellationToken, pub wait_group::GroupGuard);
 
 impl<L: Listener> Actor for ListenerActor<L> {
     type Message = gyre::OwnedEventGuard<L::Event>;

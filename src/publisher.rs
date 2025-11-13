@@ -1,15 +1,15 @@
 use crate::event::Event;
-use crate::{EmitterProxy, TypedEmit, emit_barrier};
+use crate::{EmitterProxy, TypedEmit, bind_lock};
 use std::any::Any;
 use std::sync::Arc;
 
 pub struct Publisher<E> {
     publisher: gyre::Publisher<E>,
-    emit_barrier: Arc<emit_barrier::Lock>,
+    emit_barrier: Arc<bind_lock::BindLock>,
 }
 
 impl<T: Event> Publisher<T> {
-    pub(crate) fn new(capacity: usize, lock: Arc<emit_barrier::Lock>) -> Self {
+    pub(crate) fn new(capacity: usize, lock: Arc<bind_lock::BindLock>) -> Self {
         let (publisher, _) = gyre::channel(capacity);
         Self {
             publisher,
@@ -27,8 +27,8 @@ impl<T: Event> TypedEmit for Publisher<T> {
 
     #[inline]
     async fn emit(&self, event: Self::Event) {
-        self.emit_barrier.until_released().await;
-        self.publisher.publish(event).await;
+        self.emit_barrier.wait_for_binds().await;
+        self.publisher.publish(event).await.unwrap_or(());
     }
 }
 

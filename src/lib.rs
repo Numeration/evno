@@ -1,15 +1,15 @@
 extern crate alloc;
 
 mod bus;
-mod conveyor;
+mod pipeline;
 mod emit;
-mod emit_barrier;
+mod bind_lock;
 mod emitter;
 mod event;
 mod handle;
 mod launcher;
 mod listener;
 mod publisher;
-mod task;
+mod wait_group;
 
-pub use {bus::Bus, conveyor::*, emit::*, emitter::*, listener::*};
+pub use {bus::Bus, pipeline::*, emit::*, emitter::*, listener::*};
