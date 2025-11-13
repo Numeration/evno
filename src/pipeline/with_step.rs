@@ -4,15 +4,15 @@ use crate::pipeline::step::Step;
 use std::marker::PhantomData;
 
 pub struct WithStep<E, T, U> {
-    emitter: T,
+    typed_emitter: T,
     step: U,
     _phantom: PhantomData<E>,
 }
 
 impl<E, T, U> WithStep<E, T, U> {
-    pub fn new(emitter: T, step: U) -> Self {
+    pub fn new(typed_emitter: T, step: U) -> Self {
         Self {
-            emitter,
+            typed_emitter,
             step,
             _phantom: PhantomData,
         }
@@ -21,7 +21,7 @@ impl<E, T, U> WithStep<E, T, U> {
 
 impl<E, T: Clone, U: Clone> Clone for WithStep<E, T, U> {
     fn clone(&self) -> Self {
-        Self::new(self.emitter.clone(), self.step.clone())
+        Self::new(self.typed_emitter.clone(), self.step.clone())
     }
 }
 
@@ -35,6 +35,6 @@ where
 
     async fn emit(&self, event: E) {
         let event = self.step.clone().process(event).await;
-        self.emitter.emit(event).await;
+        self.typed_emitter.emit(event).await;
     }
 }

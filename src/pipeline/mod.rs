@@ -1,44 +1,48 @@
-mod with_step;
 mod step;
+mod with_step;
 
 use crate::event::Event;
-use crate::{Emit, ToEmitter};
+use crate::{Bus, Emit, ToEmitter};
 
-pub use with_step::*;
 pub use step::*;
+pub use with_step::*;
 
-pub trait Pipeline: Send + Sync {
-    type Emit: Emit;
-
-    type Processor: Step;
-
-    fn emit(&self) -> &Self::Emit;
-
-    fn step(&self) -> Self::Processor;
+#[derive(Debug, Clone)]
+pub struct Pipeline<T, U> {
+    emitter: T,
+    step: U,
 }
 
-impl<T, U, P> Emit for T
-where
-    T: Pipeline<Emit = U, Processor = P>,
-    U: Emit,
-    P: Step,
-{
-    async fn emit<E: Event>(&self, event: E) {
-        let event = self.step().clone().process(event).await;
-        self.emit().emit(event).await;
+impl<T: Emit, U: Step> Pipeline<T, U> {
+    pub fn pipe<P: Step>(self, step: P) -> Pipeline<Self, P> {
+        Pipeline {
+            emitter: self,
+            step,
+        }
     }
 }
 
-impl<T, U, P> ToEmitter for T
-where
-    T: Pipeline<Emit = U, Processor = P>,
-    U: ToEmitter,
-    P: Step,
-{
-    type Emitter<E: Event> = WithStep<E, U::Emitter<P::Event<E>>, P>;
+impl<T: Emit, U: Step> Emit for Pipeline<T, U> {
+    async fn emit<E: Event>(&self, event: E) {
+        let event = self.step.clone().process(event).await;
+        self.emitter.emit(event).await
+    }
+}
+
+impl<ToE: ToEmitter, U: Step> ToEmitter for Pipeline<ToE, U> {
+    type Emitter<E: Event> = WithStep<E, ToE::Emitter<U::Event<E>>, U>;
 
     fn to_emitter<E: Event>(&self) -> Self::Emitter<E> {
-        let emitter = self.emit().to_emitter();
-        WithStep::new(emitter, self.step().clone())
+        let emitter = self.emitter.to_emitter();
+        WithStep::new(emitter, self.step.clone())
+    }
+}
+
+impl From<Bus> for Pipeline<Bus, Identity> {
+    fn from(value: Bus) -> Self {
+        Self {
+            emitter: value,
+            step: Identity,
+        }
     }
 }

@@ -6,3 +6,15 @@ pub trait Step: Clone + Sync {
 
     async fn process<E: Event>(self, event: E) -> Self::Event<E>;
 }
+
+#[derive(Debug, Clone)]
+pub struct Identity;
+
+impl Step for Identity {
+    type Event<E: Event> = E;
+
+    #[inline]
+    async fn process<E: Event>(self, event: E) -> Self::Event<E> {
+        event
+    }
+}
