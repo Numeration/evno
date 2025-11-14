@@ -37,7 +37,6 @@ impl WaitGroup {
     }
 }
 
-
 pub struct GroupGuard(Arc<Inner>);
 
 impl Drop for GroupGuard {

@@ -145,13 +145,13 @@ impl Drop for Bus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Guard;
     use crate::listener::from_fn;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
     use tokio::sync::oneshot;
     use tokio::time::sleep;
-    use crate::Guard;
 
     // 一个简单的事件结构体用于测试
     #[derive(Debug, Clone, PartialEq)]
@@ -270,12 +270,15 @@ mod tests {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
 
-        let handle = bus.many(3, from_fn(move |_event: Guard<TestEvent>| {
-            let counter = counter_clone.clone();
-            async move {
-                counter.fetch_add(1, Ordering::SeqCst);
-            }
-        }));
+        let handle = bus.many(
+            3,
+            from_fn(move |_event: Guard<TestEvent>| {
+                let counter = counter_clone.clone();
+                async move {
+                    counter.fetch_add(1, Ordering::SeqCst);
+                }
+            }),
+        );
 
         sleep(Duration::from_millis(10)).await;
 

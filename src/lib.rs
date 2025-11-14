@@ -2,14 +2,14 @@ extern crate alloc;
 
 mod bind_latch;
 mod bus;
+mod chain;
 mod emit;
 mod emitter;
 mod event;
 mod handle;
 mod launcher;
 mod listener;
-mod chain;
 mod publisher;
 mod wait_group;
 
-pub use {bus::Bus, emit::*, emitter::*, listener::*, chain::*};
+pub use {bus::Bus, chain::*, emit::*, emitter::*, listener::*};

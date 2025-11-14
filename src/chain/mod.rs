@@ -101,7 +101,6 @@ mod tests {
         }
     }
 
-
     #[tokio::test]
     async fn test_identity_chain() {
         let bus = Bus::new(2);

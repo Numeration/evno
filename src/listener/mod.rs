@@ -182,7 +182,7 @@ mod tests {
         let (completion_tx, completion_rx) = oneshot::channel();
 
         let listener = SelfCancellingListener {
-            completion_tx: Some(completion_tx)
+            completion_tx: Some(completion_tx),
         };
 
         // Bind the listener.
@@ -196,9 +196,13 @@ mod tests {
 
         // The handle should complete because its underlying task is cancelled.
         // This is the main assertion: the task finishes.
-        handle.await.expect("Task should terminate gracefully after self-cancellation.");
+        handle
+            .await
+            .expect("Task should terminate gracefully after self-cancellation.");
 
         // We can also verify that 'after' was called.
-        completion_rx.await.expect("The 'after' method should be called on self-cancellation.");
+        completion_rx
+            .await
+            .expect("The 'after' method should be called on self-cancellation.");
     }
 }
