@@ -5,15 +5,15 @@ use std::sync::Arc;
 
 pub struct Publisher<E> {
     publisher: gyre::Publisher<E>,
-    emit_barrier: Arc<bind_latch::BindLatch>,
+    bind_latch: Arc<bind_latch::BindLatch>,
 }
 
 impl<T: Event> Publisher<T> {
-    pub(crate) fn new(capacity: usize, lock: Arc<bind_latch::BindLatch>) -> Self {
+    pub(crate) fn new(capacity: usize, bind_latch: Arc<bind_latch::BindLatch>) -> Self {
         let (publisher, _) = gyre::channel(capacity);
         Self {
             publisher,
-            emit_barrier: lock,
+            bind_latch,
         }
     }
 
@@ -27,7 +27,7 @@ impl<T: Event> TypedEmit for Publisher<T> {
 
     #[inline]
     async fn emit(&self, event: Self::Event) {
-        self.emit_barrier.wait_for_binds().await;
+        self.bind_latch.wait_for_binds().await;
         self.publisher.publish(event).await.unwrap_or(());
     }
 }
@@ -36,7 +36,7 @@ impl<T> Clone for Publisher<T> {
     fn clone(&self) -> Self {
         Self {
             publisher: self.publisher.clone(),
-            emit_barrier: self.emit_barrier.clone(),
+            bind_latch: self.bind_latch.clone(),
         }
     }
 }

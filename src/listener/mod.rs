@@ -1,6 +1,6 @@
 mod from_fn;
-mod with_times;
 mod from_fn_with_cancel;
+mod with_times;
 
 use crate::event::Event;
 use crate::wait_group;

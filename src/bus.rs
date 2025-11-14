@@ -39,12 +39,7 @@ impl Inner {
         self.emitters
             .get_or_insert_with(
                 TypeId::of::<E>(),
-                || {
-                    Box::new(Publisher::<E>::new(
-                        self.capacity,
-                        self.bind_latch.clone(),
-                    ))
-                },
+                || Box::new(Publisher::<E>::new(self.capacity, self.bind_latch.clone())),
                 emitters_guard,
             )
             .deref()
