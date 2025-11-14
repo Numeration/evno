@@ -7,13 +7,33 @@ use crate::{Bus, Close, Drain, Emit, ToEmitter};
 pub use step::*;
 pub use with_step::*;
 
+/// The core structure of the event processing chain.
+///
+/// `Chain<T, U>` wraps a base Emitter `T` and an event processing step `U` (`Step`).
+/// Events are transformed by `U` before being sent to `T`.
+///
+/// The structure of the chain is recursive: `Chain<Chain<Bus, Step1>, Step2>` means
+/// the event first passes through `Step2`, then `Step1`, and finally reaches the `Bus`.
 #[derive(Debug, Clone)]
 pub struct Chain<T, U> {
+    /// The next processing stage Emitter in the chain (can be a Bus or another Chain).
     emitter: T,
+    /// The transformation step executed before the event is passed to `emitter`.
     step: U,
 }
 
 impl<T: Emit, U: Step> Chain<T, U> {
+    /// Prepends a new step `P` to the front of the current chain.
+    ///
+    /// The new step `P` will be executed before the current chain's step `U`.
+    ///
+    /// # Generic Arguments
+    /// * `T`: The underlying Emitter of the current chain.
+    /// * `U`: The existing `Step` of the current chain.
+    /// * `P`: The new `Step` to add.
+    ///
+    /// # Returns
+    /// Returns a new `Chain<Self, P>`, where `Self` is the original `Chain<T, U>`.
     pub fn prepend<P: Step>(self, step: P) -> Chain<Self, P> {
         Chain {
             emitter: self,
@@ -23,34 +43,53 @@ impl<T: Emit, U: Step> Chain<T, U> {
 }
 
 impl<T: Drain, U: Send> Drain for Chain<T, U> {
+    /// Delegates the drain operation to the underlying Emitter.
+    ///
+    /// Since `Chain` itself doesn't hold tasks, draining relies on the innermost Emitter (usually `Bus`).
     async fn drain(self) {
         self.emitter.drain().await;
     }
 }
 
 impl<T: Close, U: Send> Close for Chain<T, U> {
+    /// Delegates the close operation to the underlying Emitter.
     async fn close(self) {
         self.emitter.close().await;
     }
 }
 
 impl<T: Emit, U: Step> Emit for Chain<T, U> {
+    /// Sends an event through the chain.
+    ///
+    /// 1. Clones `step` and calls its `process` method to transform the event.
+    /// 2. Sends the transformed event to the underlying `emitter`.
     async fn emit<E: Event>(&self, event: E) {
+        // The Step must be cloneable as it usually contains context that needs to be moved by value.
         let event = self.step.clone().process(event).await;
         self.emitter.emit(event).await
     }
 }
 
 impl<ToE: ToEmitter, U: Step> ToEmitter for Chain<ToE, U> {
+    /// The associated Emitter type is an Emitter wrapped with a Step.
+    ///
+    /// The `WithStep` struct ensures that the Step transformation logic is
+    /// automatically applied even when sending events through a typed Emitter.
     type Emitter<E: Event> = WithStep<E, ToE::Emitter<U::Event<E>>, U>;
 
+    /// Gets a typed Emitter that automatically applies the Step logic on the chain when used.
     fn to_emitter<E: Event>(&self) -> Self::Emitter<E> {
+        // 1. Get the typed Emitter instance from the underlying Emitter (Bus).
         let emitter = self.emitter.to_emitter();
+        // 2. Wrap it together with the current Step.
         WithStep::new(emitter, self.step.clone())
     }
 }
 
 impl From<Bus> for Chain<Bus, Identity> {
+    /// Allows converting a `Bus` into a base chain using `Chain::from(Bus)`, with `Identity` as the first step.
+    ///
+    /// The `Identity` step performs no transformation, ensuring the `Emit` semantics of the base `Bus` remain unchanged.
     fn from(value: Bus) -> Self {
         Self {
             emitter: value,
@@ -58,10 +97,6 @@ impl From<Bus> for Chain<Bus, Identity> {
         }
     }
 }
-
-// chain/mod.rs
-
-// ... (file contents above the tests remain the same) ...
 
 #[cfg(test)]
 mod tests {

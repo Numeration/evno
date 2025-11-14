@@ -13,41 +13,74 @@ pub use from_fn::*;
 pub use from_fn_with_cancel::*;
 pub use with_times::*;
 
+/// The owned event Guard, provided by the underlying `gyre` library.
+///
+/// It wraps the event `E` and releases the underlying buffer space when it is dropped.
 pub type Guard<E> = gyre::OwnedEventGuard<E>;
 
+/// Trait defining the event handling logic.
+///
+/// Every struct implementing `Listener` represents an independent event consumer,
+/// which runs as a `ListenerActor` within the `Bus`.
 #[trait_variant::make(Send)]
 pub trait Listener: Sized + 'static {
+    /// The event type expected by this Listener.
     type Event: Event;
 
+    /// Called when the listener starts up.
+    ///
+    /// Executes before the Actor begins receiving events, useful for initializing resources
+    /// or performing asynchronous setup.
     async fn begin(&mut self, cancel: &CancellationToken);
 
+    /// Processes a single received event.
+    ///
+    /// The `cancel` token provides the ability for self-cancellation.
     async fn handle(&mut self, cancel: &CancellationToken, event: Guard<Self::Event>) -> ();
 
+    /// Called when the listener exits (whether due to cancellation, stream end, or error).
+    ///
+    /// Useful for cleaning up resources or logging exit status.
     async fn after(&mut self, cancel: &CancellationToken);
 }
 
+/// A struct that wraps a `Listener` into an `acty::Actor`.
+///
+/// It manages the Listener's lifecycle, connects it to the event stream, and responds to cancellation signals.
 pub struct ListenerActor<L>(pub L, pub CancellationToken, pub wait_group::GroupGuard);
 
 impl<L: Listener> Actor for ListenerActor<L> {
+    /// The message type the Actor receives is the event Guard.
     type Message = gyre::OwnedEventGuard<L::Event>;
 
+    /// Runs the Listener Actor's main loop.
     async fn run(self, inbox: impl Stream<Item = Self::Message>) {
         let ListenerActor(mut listener, cancel, _guard) = self;
         let mut inbox = pin!(inbox);
 
+        // 1. Call the `begin` lifecycle method
         listener.begin(&cancel).await;
+
+        // 2. Main event processing loop, continuously watching for cancellation and the event stream
         while !cancel.is_cancelled() {
             tokio::select! {
+                // Prioritize getting the next event from the stream
                 event = inbox.next() => match event {
                     Some(event) => {
                         listener.handle(&cancel, event).await;
                     }
+                    // Stream has ended (Publisher was dropped), break the loop
                     None => break,
                 },
+                // Respond to external cancellation signal
                 _ = cancel.cancelled() => break,
             }
         }
+
+        // 3. Call the `after` lifecycle method
         listener.after(&cancel).await;
+
+        // 4. When the Actor exits, `_guard` (GroupGuard) is dropped, notifying the WaitGroup that the task is complete.
     }
 }
 
