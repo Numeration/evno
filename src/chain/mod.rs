@@ -8,28 +8,28 @@ pub use step::*;
 pub use with_step::*;
 
 #[derive(Debug, Clone)]
-pub struct Pipeline<T, U> {
+pub struct Chain<T, U> {
     emitter: T,
     step: U,
 }
 
-impl<T: Emit, U: Step> Pipeline<T, U> {
-    pub fn prepend<P: Step>(self, step: P) -> Pipeline<Self, P> {
-        Pipeline {
+impl<T: Emit, U: Step> Chain<T, U> {
+    pub fn prepend<P: Step>(self, step: P) -> Chain<Self, P> {
+        Chain {
             emitter: self,
             step,
         }
     }
 }
 
-impl<T: Emit, U: Step> Emit for Pipeline<T, U> {
+impl<T: Emit, U: Step> Emit for Chain<T, U> {
     async fn emit<E: Event>(&self, event: E) {
         let event = self.step.clone().process(event).await;
         self.emitter.emit(event).await
     }
 }
 
-impl<ToE: ToEmitter, U: Step> ToEmitter for Pipeline<ToE, U> {
+impl<ToE: ToEmitter, U: Step> ToEmitter for Chain<ToE, U> {
     type Emitter<E: Event> = WithStep<E, ToE::Emitter<U::Event<E>>, U>;
 
     fn to_emitter<E: Event>(&self) -> Self::Emitter<E> {
@@ -38,7 +38,7 @@ impl<ToE: ToEmitter, U: Step> ToEmitter for Pipeline<ToE, U> {
     }
 }
 
-impl From<Bus> for Pipeline<Bus, Identity> {
+impl From<Bus> for Chain<Bus, Identity> {
     fn from(value: Bus) -> Self {
         Self {
             emitter: value,
@@ -103,16 +103,16 @@ mod tests {
 
 
     #[tokio::test]
-    async fn test_identity_pipeline() {
+    async fn test_identity_chain() {
         let bus = Bus::new(2);
-        let pipeline = Pipeline::from(bus.clone());
+        let pipeline = Chain::from(bus.clone());
 
         let (tx, rx) = oneshot::channel();
-        let mut tx_warp = Some(tx);
+        let mut tx_wrap = Some(tx);
 
         // The listener expects the original event type
         bus.on(from_fn(move |event: Guard<EventA>| {
-            let tx = tx_warp.take().unwrap();
+            let tx = tx_wrap.take().unwrap();
             async move {
                 let _ = tx.send(event.clone());
             }
@@ -128,16 +128,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_single_step_pipeline() {
+    async fn test_single_step_chain() {
         let bus = Bus::new(2);
-        let pipeline = Pipeline::from(bus.clone()).prepend(NumberToStringStep);
+        let pipeline = Chain::from(bus.clone()).prepend(NumberToStringStep);
 
         let (tx, rx) = oneshot::channel();
-        let mut tx_warp = Some(tx);
+        let mut tx_wrap = Some(tx);
 
         // The listener must expect the *transformed* event type (EventB)
         bus.on(from_fn(move |event: Guard<EventB>| {
-            let tx = tx_warp.take().unwrap();
+            let tx = tx_wrap.take().unwrap();
             async move {
                 let _ = tx.send(event.clone());
             }
@@ -153,18 +153,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_chained_pipe_pipeline() {
+    async fn test_chained_pipe_chain() {
         let bus = Bus::new(2);
-        let pipeline = Pipeline::from(bus.clone())
+        let pipeline = Chain::from(bus.clone())
             .prepend(StringToBytesStep)
             .prepend(NumberToStringStep);
 
         let (tx, rx) = oneshot::channel();
-        let mut tx_warp = Some(tx);
+        let mut tx_wrap = Some(tx);
 
         // The listener must expect the *final* transformed event type (EventC)
         bus.on(from_fn(move |event: Guard<EventC>| {
-            let tx = tx_warp.take().unwrap();
+            let tx = tx_wrap.take().unwrap();
             async move {
                 let _ = tx.send(event.clone());
             }
@@ -180,18 +180,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_pipeline_to_emitter() {
+    async fn test_chain_to_emitter() {
         let bus = Bus::new(2);
-        let pipeline = Pipeline::from(bus.clone())
+        let pipeline = Chain::from(bus.clone())
             .prepend(StringToBytesStep)
             .prepend(NumberToStringStep);
 
         let (tx, rx) = oneshot::channel();
-        let mut tx_warp = Some(tx);
+        let mut tx_wrap = Some(tx);
 
         // Listener for the final event type
         bus.on(from_fn(move |event: Guard<EventC>| {
-            let tx = tx_warp.take().unwrap();
+            let tx = tx_wrap.take().unwrap();
             async move {
                 let _ = tx.send(event.clone());
             }
@@ -199,7 +199,7 @@ mod tests {
 
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-        // Get a typed emitter. The type parameter is the *input* type of the pipeline.
+        // Get a typed emitter. The type parameter is the *input* type of the chain.
         let typed_emitter = pipeline.to_emitter::<EventA>();
 
         // Emit using the typed emitter.

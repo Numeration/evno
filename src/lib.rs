@@ -8,8 +8,8 @@ mod event;
 mod handle;
 mod launcher;
 mod listener;
-mod pipeline;
+mod chain;
 mod publisher;
 mod wait_group;
 
-pub use {bus::Bus, emit::*, emitter::*, listener::*, pipeline::*};
+pub use {bus::Bus, emit::*, emitter::*, listener::*, chain::*};

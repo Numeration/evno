@@ -1,6 +1,6 @@
 use crate::TypedEmit;
 use crate::event::Event;
-use crate::pipeline::step::Step;
+use crate::chain::step::Step;
 use std::marker::PhantomData;
 
 pub struct WithStep<E, T, U> {
