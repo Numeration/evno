@@ -1,5 +1,6 @@
 mod from_fn;
 mod with_times;
+mod from_fn_with_cancel;
 
 use crate::event::Event;
 use crate::wait_group;
@@ -9,6 +10,7 @@ use std::pin::pin;
 use tokio_util::sync::CancellationToken;
 
 pub use from_fn::*;
+pub use from_fn_with_cancel::*;
 pub use with_times::*;
 
 pub type Guard<E> = gyre::OwnedEventGuard<E>;
