@@ -36,7 +36,7 @@ impl<L: Listener> Actor for ListenerActor<L> {
         let mut inbox = pin!(inbox);
 
         listener.begin(&cancel).await;
-        loop {
+        while !cancel.is_cancelled() {
             tokio::select! {
                 event = inbox.next() => match event {
                     Some(event) => {
