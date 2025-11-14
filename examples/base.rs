@@ -1,4 +1,4 @@
-use evno::{Bus, Emit, Guard, from_fn};
+use evno::{Bus, Close, Emit, Guard, from_fn};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -41,8 +41,9 @@ async fn main() {
     bus.emit(EventD).await;
 
     // Cancel EventB listener and register EventD listener
+    tokio::time::sleep(Duration::from_millis(100)).await;
     handle2.cancel();
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
     bus.on(from_fn(|_: Guard<EventD>| async {
         println!("Handled  Event D");
     }));
@@ -50,6 +51,8 @@ async fn main() {
     // Emit again
     bus.emit(EventA).await;
     bus.emit(EventB).await;
-    bus.clone().emit(EventD).await;
-    bus.drain().await;
+    {
+        bus.clone().emit(EventD).await;
+    }
+    bus.close().await;
 }
