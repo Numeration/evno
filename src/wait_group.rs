@@ -9,6 +9,11 @@ struct Inner {
     notify: Notify,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct WaitGroup {
+    inner: Arc<Inner>,
+}
+
 impl WaitGroup {
     pub fn add(&self) -> GroupGuard {
         self.inner.count.fetch_add(1, Ordering::Relaxed);
@@ -32,10 +37,6 @@ impl WaitGroup {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct WaitGroup {
-    inner: Arc<Inner>,
-}
 
 pub struct GroupGuard(Arc<Inner>);
 
