@@ -3,8 +3,8 @@ use crate::handle::SubscribeHandle;
 use crate::launcher::Launcher;
 use crate::publisher::Publisher;
 use crate::{
-    AsEmitter, Emit, EmitterProxy, Listener, ListenerActor, ToEmitter, TypedEmit, WithTimes,
-    bind_latch, wait_group,
+    AsEmitter, Close, Drain, Emit, EmitterProxy, Listener, ListenerActor, ToEmitter, TypedEmit,
+    WithTimes, bind_latch, wait_group,
 };
 use acty::ActorExt;
 use std::any::TypeId;
@@ -103,14 +103,24 @@ impl Bus {
     ) -> SubscribeHandle {
         self.bind(WithTimes::new(times, listener))
     }
+}
 
-    pub async fn drain(self) {
+impl Drain for Bus {
+    async fn drain(self) {
         let latch = self.inner.wait_group.clone();
         let barrier = self.drop_notifier.clone();
         let notified = barrier.0.notified();
         drop(self);
         latch.wait().await;
         notified.await;
+    }
+}
+
+impl Close for Bus {
+    async fn close(mut self) {
+        if Arc::get_mut(&mut self.inner).is_some() {
+            self.drain().await;
+        }
     }
 }
 

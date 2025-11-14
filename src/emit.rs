@@ -11,3 +11,13 @@ pub trait TypedEmit: Send + Sync {
 
     async fn emit(&self, event: Self::Event);
 }
+
+#[trait_variant::make(Send)]
+pub trait Drain {
+    async fn drain(self);
+}
+
+#[trait_variant::make(Send)]
+pub trait Close {
+    async fn close(self);
+}

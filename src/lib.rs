@@ -1,5 +1,3 @@
-extern crate alloc;
-
 mod bind_latch;
 mod bus;
 mod chain;
@@ -12,4 +10,4 @@ mod listener;
 mod publisher;
 mod wait_group;
 
-pub use {bus::Bus, chain::*, emit::*, emitter::*, listener::*};
+pub use {bus::Bus, chain::*, emit::*, emitter::*, event::Event, listener::*};

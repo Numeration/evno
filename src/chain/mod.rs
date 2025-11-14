@@ -2,7 +2,7 @@ mod step;
 mod with_step;
 
 use crate::event::Event;
-use crate::{Bus, Emit, ToEmitter};
+use crate::{Bus, Close, Drain, Emit, ToEmitter};
 
 pub use step::*;
 pub use with_step::*;
@@ -19,6 +19,18 @@ impl<T: Emit, U: Step> Chain<T, U> {
             emitter: self,
             step,
         }
+    }
+}
+
+impl<T: Drain, U: Send> Drain for Chain<T, U> {
+    async fn drain(self) {
+        self.emitter.drain().await;
+    }
+}
+
+impl<T: Close, U: Send> Close for Chain<T, U> {
+    async fn close(self) {
+        self.emitter.close().await;
     }
 }
 
