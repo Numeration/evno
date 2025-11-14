@@ -22,7 +22,7 @@
 //!     Traits, you can build rich, type-safe pipelines to preprocess events (e.g., inject context or logging)
 //!     before they reach the bus.
 //!
-//! ## Quick Start (Introductory Example)
+//! ## Quick Start
 //!
 //! This is the simplest example of `Bus` usage, showing how to bind a listener and emit an event.
 //!
@@ -80,7 +80,7 @@
 //!     *   [`from_fn`](./listener/fn.from_fn.html): Suitable for simple asynchronous closures.
 //!     *   [`from_fn_with_cancel`](./listener/fn.from_fn_with_cancel.html): Suitable for closures that need access to the `CancellationToken` within the `handle` logic to perform self-cancellation.
 //!
-//! ## Advanced Example: Event Chain and Context Injection
+//! ## Event Chain and Context Injection
 //!
 //! The `Chain` mechanism enables decorating or transforming events before they reach the bus, offering middleware capabilities.
 //!
@@ -123,7 +123,7 @@
 //!     let chain = Chain::from(bus.clone()).prepend(RequestInjector(counter));
 //!
 //!     // 2. Bind a listener. Note: It must listen for the type processed by the Step
-//!     let handle = bus.on(from_fn(move |event: Guard<ContextualEvent<OriginalEvent>>| async move {
+//!     let handle = bus.on(from_fn(|event: Guard<ContextualEvent<OriginalEvent>>| async move {
 //!         // We can safely access the injected context
 //!         println!(
 //!             "[ID: {}] Processing event: {}",

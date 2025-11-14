@@ -102,7 +102,7 @@ impl From<Bus> for Chain<Bus, Identity> {
 mod tests {
     use super::*;
     use crate::listener::from_fn;
-    use crate::{Bus, TypedEmit};
+    use crate::{Bus, Guard, TypedEmit};
     use std::sync::atomic::{AtomicU64, Ordering};
     use tokio::sync::oneshot;
 
@@ -186,10 +186,10 @@ mod tests {
         let mut tx_wrap = Some(tx);
 
         // The listener expects the original event type, as Identity step does nothing.
-        bus.on::<OriginalEvent>(from_fn(move |event| {
+        bus.on(from_fn(move |event: Guard<OriginalEvent>| {
             let tx = tx_wrap.take().unwrap();
             async move {
-                tx.send(OriginalEvent::clone(&*event)).unwrap_or(());
+                tx.send(event.clone()).unwrap_or(());
             }
         }));
 
@@ -209,12 +209,14 @@ mod tests {
 
         // The listener now expects the *wrapped* event type.
         // This is checked at compile time!
-        bus.on::<Scoped<OriginalEvent, RequestContext>>(from_fn(move |event| {
-            let tx = tx_wrap.take().unwrap();
-            async move {
-                tx.send(Scoped::clone(&*event)).unwrap_or(());
-            }
-        }));
+        bus.on(from_fn(
+            move |event: Guard<Scoped<OriginalEvent, RequestContext>>| {
+                let tx = tx_wrap.take().unwrap();
+                async move {
+                    tx.send(event.clone()).unwrap_or(());
+                }
+            },
+        ));
 
         // We still emit the *original* event type.
         let original_event = OriginalEvent("find user".to_string());
@@ -241,11 +243,11 @@ mod tests {
         // The listener's expected type reflects the nested structure.
         // Type: Scoped<Scoped<OriginalEvent, RequestContext>, UserContext>
         // This complex type signature is the proof of compile-time safety.
-        bus.on::<Scoped<Scoped<OriginalEvent, RequestContext>, UserContext>>(from_fn(
-            move |event| {
+        bus.on(from_fn(
+            move |event: Guard<Scoped<Scoped<OriginalEvent, RequestContext>, UserContext>>| {
                 let tx = tx_wrap.take().unwrap();
                 async move {
-                    tx.send(Scoped::clone(&*event)).unwrap_or(());
+                    tx.send(event.clone()).unwrap_or(());
                 }
             },
         ));
@@ -275,11 +277,11 @@ mod tests {
         let mut tx_wrap = Some(tx);
 
         // Listener for the final, fully-wrapped event type.
-        bus.on::<Scoped<Scoped<OriginalEvent, RequestContext>, UserContext>>(from_fn(
-            move |event| {
+        bus.on(from_fn(
+            move |event: Guard<Scoped<Scoped<OriginalEvent, RequestContext>, UserContext>>| {
                 let tx = tx_wrap.take().unwrap();
                 async move {
-                    tx.send(Scoped::clone(&*event)).unwrap_or(());
+                    tx.send(event.clone()).unwrap_or(());
                 }
             },
         ));
