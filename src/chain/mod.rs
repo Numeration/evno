@@ -146,7 +146,7 @@ mod tests {
     #[tokio::test]
     async fn test_identity_chain_passes_event_through() {
         let bus = Bus::new(2);
-        let pipeline = Chain::from(bus.clone());
+        let chain = Chain::from(bus.clone());
         let (tx, rx) = oneshot::channel();
         let mut tx_wrap = Some(tx);
 
@@ -159,7 +159,7 @@ mod tests {
         }));
 
         let original_event = OriginalEvent("hello".to_string());
-        pipeline.emit(original_event.clone()).await;
+        chain.emit(original_event.clone()).await;
 
         let received_event = rx.await.unwrap();
         assert_eq!(received_event, original_event);
@@ -168,7 +168,7 @@ mod tests {
     #[tokio::test]
     async fn test_single_step_injects_context() {
         let bus = Bus::new(2);
-        let pipeline = Chain::from(bus.clone()).prepend(WithRequestStep::new());
+        let chain = Chain::from(bus.clone()).prepend(WithRequestStep::new());
         let (tx, rx) = oneshot::channel();
         let mut tx_wrap = Some(tx);
 
@@ -183,7 +183,7 @@ mod tests {
 
         // We still emit the *original* event type.
         let original_event = OriginalEvent("find user".to_string());
-        pipeline.emit(original_event.clone()).await;
+        chain.emit(original_event.clone()).await;
 
         let received_event = rx.await.unwrap();
 
@@ -196,7 +196,7 @@ mod tests {
     #[tokio::test]
     async fn test_chained_steps_nest_context_correctly() {
         let bus = Bus::new(2);
-        let pipeline = Chain::from(bus.clone())
+        let chain = Chain::from(bus.clone())
             .prepend(WithUserStep { user_id: 123 }) // Outer wrapper
             .prepend(WithRequestStep::new()); // Inner wrapper
 
@@ -217,7 +217,7 @@ mod tests {
 
         // We emit the simple, original event.
         let original_event = OriginalEvent("update profile".to_string());
-        pipeline.emit(original_event.clone()).await;
+        chain.emit(original_event.clone()).await;
 
         let received = rx.await.unwrap();
 
@@ -232,7 +232,7 @@ mod tests {
     #[tokio::test]
     async fn test_chain_to_emitter_with_context_injection() {
         let bus = Bus::new(2);
-        let pipeline = Chain::from(bus.clone())
+        let chain = Chain::from(bus.clone())
             .prepend(WithUserStep { user_id: 456 })
             .prepend(WithRequestStep::new());
 
@@ -250,7 +250,7 @@ mod tests {
         ));
 
         // Get a typed emitter. The type parameter is the *input* type of the chain.
-        let typed_emitter = pipeline.to_emitter::<OriginalEvent>();
+        let typed_emitter = chain.to_emitter::<OriginalEvent>();
 
         let original_event = OriginalEvent("create post".to_string());
         // Emit using the typed emitter.
