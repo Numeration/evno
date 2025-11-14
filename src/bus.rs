@@ -16,7 +16,7 @@ use tokio_util::sync::CancellationToken;
 struct Inner {
     capacity: usize,
     emitters: papaya::HashMap<TypeId, Box<dyn EmitterProxy>>,
-    emit_barrier: Arc<bind_lock::BindLock>,
+    bind_lock: Arc<bind_lock::BindLock>,
     latch: wait_group::WaitGroup,
 }
 
@@ -25,7 +25,7 @@ impl Inner {
         Self {
             capacity,
             emitters: Default::default(),
-            emit_barrier: Default::default(),
+            bind_lock: Default::default(),
             latch: Default::default(),
         }
     }
@@ -40,7 +40,7 @@ impl Inner {
                 || {
                     Box::new(Publisher::<E>::new(
                         self.capacity,
-                        self.emit_barrier.clone(),
+                        self.bind_lock.clone(),
                     ))
                 },
                 emitters_guard,
@@ -76,7 +76,7 @@ impl Bus {
         listener: impl Listener<Event = E>,
     ) -> SubscribeHandle {
         let task_guard = self.inner.latch.add();
-        let emit_guard = self.inner.emit_barrier.lock();
+        let bind_guard = self.inner.bind_lock.lock();
         let emitters_guard = self.inner.emitters.owned_guard();
         let emitter = self
             .inner
@@ -85,7 +85,7 @@ impl Bus {
             .clone();
 
         let actor = ListenerActor(listener, cancel.clone(), task_guard);
-        let launcher = Launcher(emitter, emit_guard);
+        let launcher = Launcher(emitter, bind_guard);
         let join = actor.with(launcher);
 
         SubscribeHandle::new(cancel, join)
