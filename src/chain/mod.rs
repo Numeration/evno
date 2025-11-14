@@ -118,8 +118,6 @@ mod tests {
             }
         }));
 
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-
         let original_event = EventA(42);
         pipeline.emit(original_event.clone()).await;
 
@@ -142,8 +140,6 @@ mod tests {
                 let _ = tx.send(event.clone());
             }
         }));
-
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // We emit the *original* event type (EventA)
         pipeline.emit(EventA(123)).await;
@@ -170,8 +166,6 @@ mod tests {
             }
         }));
 
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-
         // We emit the *initial* event type (EventA)
         pipeline.emit(EventA(999)).await;
 
@@ -196,8 +190,6 @@ mod tests {
                 let _ = tx.send(event.clone());
             }
         }));
-
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // Get a typed emitter. The type parameter is the *input* type of the chain.
         let typed_emitter = pipeline.to_emitter::<EventA>();
