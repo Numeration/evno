@@ -4,7 +4,7 @@ use crate::launcher::Launcher;
 use crate::publisher::Publisher;
 use crate::{
     AsEmitter, Emit, EmitterProxy, Listener, ListenerActor, ToEmitter, TypedEmit, WithTimes,
-    bind_lock, wait_group,
+    bind_latch, wait_group,
 };
 use acty::ActorExt;
 use std::any::TypeId;
@@ -16,17 +16,19 @@ use tokio_util::sync::CancellationToken;
 struct Inner {
     capacity: usize,
     emitters: papaya::HashMap<TypeId, Box<dyn EmitterProxy>>,
-    bind_lock: Arc<bind_lock::BindLock>,
-    latch: wait_group::WaitGroup,
+    bind_latch: Arc<bind_latch::BindLatch>,
+    wait_group: wait_group::WaitGroup,
 }
 
 impl Inner {
     fn new(capacity: usize) -> Self {
+        assert!(capacity >= 2, "capacity must be at least 2");
+        assert!(capacity.is_power_of_two(), "capacity must be a power of 2");
         Self {
             capacity,
             emitters: Default::default(),
-            bind_lock: Default::default(),
-            latch: Default::default(),
+            bind_latch: Default::default(),
+            wait_group: Default::default(),
         }
     }
 
@@ -40,7 +42,7 @@ impl Inner {
                 || {
                     Box::new(Publisher::<E>::new(
                         self.capacity,
-                        self.bind_lock.clone(),
+                        self.bind_latch.clone(),
                     ))
                 },
                 emitters_guard,
@@ -75,8 +77,8 @@ impl Bus {
         cancel: CancellationToken,
         listener: impl Listener<Event = E>,
     ) -> SubscribeHandle {
-        let task_guard = self.inner.latch.add();
-        let bind_guard = self.inner.bind_lock.lock();
+        let task_guard = self.inner.wait_group.add();
+        let bind_guard = self.inner.bind_latch.lock();
         let emitters_guard = self.inner.emitters.owned_guard();
         let emitter = self
             .inner
@@ -108,7 +110,7 @@ impl Bus {
     }
 
     pub async fn drain(self) {
-        let latch = self.inner.latch.clone();
+        let latch = self.inner.wait_group.clone();
         let barrier = self.drop_notifier.clone();
         let notified = barrier.0.notified();
         drop(self);

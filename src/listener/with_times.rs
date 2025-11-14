@@ -31,8 +31,8 @@ where
     type Event = E;
 
     #[inline]
-    async fn begin(&mut self, cannel: &CancellationToken) {
-        self.listener.begin(cannel).await;
+    async fn begin(&mut self, cancel: &CancellationToken) {
+        self.listener.begin(cancel).await;
     }
 
     #[inline]

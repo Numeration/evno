@@ -2,7 +2,7 @@ use crossbeam_utils::CachePadded;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct BindGuard(Arc<BindLock>);
+pub struct BindGuard(Arc<BindLatch>);
 
 impl Drop for BindGuard {
     fn drop(&mut self) {
@@ -11,11 +11,11 @@ impl Drop for BindGuard {
 }
 
 #[derive(Debug, Default)]
-pub struct BindLock {
+pub struct BindLatch {
     counter: CachePadded<AtomicUsize>,
 }
 
-impl BindLock {
+impl BindLatch {
     pub fn lock(self: &Arc<Self>) -> BindGuard {
         self.counter.fetch_add(1, Ordering::AcqRel);
         BindGuard(Arc::clone(self))

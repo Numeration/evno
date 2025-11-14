@@ -1,6 +1,6 @@
 extern crate alloc;
 
-mod bind_lock;
+mod bind_latch;
 mod bus;
 mod emit;
 mod emitter;
