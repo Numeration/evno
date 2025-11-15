@@ -30,9 +30,6 @@ impl SubscribeHandle {
     /// causing the Listener Actor to gracefully exit its `run` loop.
     ///
     /// The returned `JoinHandle` can be used to wait for the task's actual termination.
-    ///
-    /// # Panics
-    /// Panics if the `join` field has already been taken (e.g., because `self` was already `poll`ed).
     pub fn cancel(mut self) -> JoinHandle<()> {
         self.cancel.cancel();
         self.join.take().expect("join already taken")
