@@ -1,6 +1,6 @@
 [package]
 name = "evno"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 authors = ["Numeration<boxed87@outlook.com>"]
 description = "A high-performance event bus for asynchronous tasks and event-driven systems."
