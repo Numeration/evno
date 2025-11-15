@@ -164,4 +164,4 @@ mod listener;
 mod publisher;
 mod wait_group;
 
-pub use {bus::Bus, chain::*, emit::*, emitter::*, event::Event, listener::*};
+pub use {bus::Bus, chain::*, emit::*, emitter::*, event::Event, handle::*, listener::*};
