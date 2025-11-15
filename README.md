@@ -64,7 +64,6 @@ tokio = { version = "1", features = ["full"] }
 Define an event, start a continuous listener, and send events.
 
 ```rust
-// main.rs
 use evno::{Bus, Emit, Close, Guard, from_fn};
 
 // 1. Define the event
@@ -266,4 +265,7 @@ async fn main() {
 
 ## License
 
-This project is licensed under the [Apache 2.0 License](LICENSE-APACHE).
+This project is distributed under either the MIT license or the Apache 2.0 license, at your option:
+
+- [MIT License](LICENSE-MIT)
+- [Apache License 2.0](LICENSE-APACHE)
